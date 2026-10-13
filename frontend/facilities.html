@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Facilities</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/facilities" class="active"><i class="fas fa-building"></i> Facilities</a></li>
+            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="/admin"><i class="fas fa-crown"></i> Admin Panel</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>🏢 Hostel Facilities</h1>
+                <p>Check available amenities and services</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="facilities-grid">
+            <div class="facility-card">
+                <div class="facility-icon">🛏️</div>
+                <div class="facility-name">Comfortable Rooms</div>
+                <div class="facility-desc">Well-ventilated rooms with attached bathroom</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🍽️</div>
+                <div class="facility-name">Mess Facility</div>
+                <div class="facility-desc">Healthy and tasty food served 3 times a day</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">📶</div>
+                <div class="facility-name">WiFi Internet</div>
+                <div class="facility-desc">High-speed WiFi connection available 24/7</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">⚡</div>
+                <div class="facility-name">Power Backup</div>
+                <div class="facility-desc">24/7 power backup with generator</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🏋️</div>
+                <div class="facility-name">Gym</div>
+                <div class="facility-desc">Fully equipped gym with trainer</div>
+                <div class="facility-status maintenance">🔧 Under Maintenance</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">📚</div>
+                <div class="facility-name">Study Room</div>
+                <div class="facility-desc">Silent study room with library facility</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">💧</div>
+                <div class="facility-name">Water Purifier</div>
+                <div class="facility-desc">RO water purifier with hot/cold water</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🧺</div>
+                <div class="facility-name">Laundry Service</div>
+                <div class="facility-desc">Professional laundry and ironing service</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🏸</div>
+                <div class="facility-name">Sports Area</div>
+                <div class="facility-desc">Indoor and outdoor sports facilities</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🏥</div>
+                <div class="facility-name">Medical Facility</div>
+                <div class="facility-desc">First aid and medical assistance available</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🅿️</div>
+                <div class="facility-name">Parking</div>
+                <div class="facility-desc">Secure parking for bikes and cars</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+
+            <div class="facility-card">
+                <div class="facility-icon">🎮</div>
+                <div class="facility-name">Common Room</div>
+                <div class="facility-desc">TV, games, and relaxation area</div>
+                <div class="facility-status available">✅ Available</div>
+            </div>
+        </div>
+
+        <div class="quick-services">
+            <h3 style="color:#F57F17; margin: 30px 0 15px 0;">🛎️ Quick Services</h3>
+            <div class="quick-services-grid">
+                <div class="service-card" onclick="requestService('Laundry')">
+                    <div class="service-icon">🧺</div>
+                    <div class="service-name">Request Laundry</div>
+                    <div class="service-desc">Pickup and delivery</div>
+                </div>
+                <div class="service-card" onclick="requestService('Medical')">
+                    <div class="service-icon">🏥</div>
+                    <div class="service-name">Medical Emergency</div>
+                    <div class="service-desc">24/7 medical assistance</div>
+                </div>
+                <div class="service-card" onclick="requestService('Sports')">
+                    <div class="service-icon">🏸</div>
+                    <div class="service-name">Book Sports</div>
+                    <div class="service-desc">Book sports equipment</div>
+                </div>
+            </div>
+            <div id="serviceMessage" class="message-box"></div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) window.location.href = '/';
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDateTime').textContent = 
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' });
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        function requestService(service) {
+            const msg = document.getElementById('serviceMessage');
+            msg.className = 'message-box success';
+            msg.textContent = `✅ ${service} service requested successfully! Our team will contact you soon.`;
+            msg.style.display = 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        }
+
+        async function loadData() {
+            try {
+                const stats = await fetch('/api/stats').then(r => r.json());
+                document.getElementById('complaintBadge').textContent = stats.total_complaints || 0;
+                document.getElementById('leaveBadge').textContent = stats.leave_requests || 0;
+            } catch(e) {}
+        }
+
+        loadData();
+    </script>
+
+</body>
+</html>

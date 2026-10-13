@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/facilities"><i class="fas fa-building"></i> Facilities</a></li>
+            <li><a href="/profile" class="active"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="/admin"><i class="fas fa-crown"></i> Admin Panel</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>👤 My Profile</h1>
+                <p>View and update your details</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- Profile Details -->
+        <div class="card">
+            <div class="card-header">
+                <h3>👤 My Profile</h3>
+            </div>
+            <div class="card-body profile-info" id="profileInfo">Loading...</div>
+        </div>
+
+        <!-- Update Profile -->
+        <div class="card">
+            <div class="card-header">
+                <h3>✏️ Update Profile</h3>
+            </div>
+            <div class="card-body">
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label>📱 Phone Number</label>
+                        <input type="text" id="profilePhone" placeholder="Enter phone number">
+                    </div>
+                    <button type="submit">💾 Update</button>
+                </form>
+                <div id="profileMessage" class="message-box"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) window.location.href = '/';
+
+        function updateDateTime() {
+            const now = new Date();
+            const el = document.getElementById('currentDateTime');
+            if (el) {
+                el.textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+            }
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                })
+                .catch(() => {
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                });
+        }
+
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+                return await res.json();
+            } catch (e) {
+                console.error('Error:', e);
+                return null;
+            }
+        }
+
+        async function loadProfile() {
+            const profile = await fetchAPI('/api/profile');
+            if (profile) {
+                let html = '';
+                html += `<div class="profile-avatar">${profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}</div>`;
+                html += `<div class="profile-details">`;
+                html += `<p><strong>Name:</strong> <span>${profile.name || ''}</span></p>`;
+                html += `<p><strong>Email:</strong> <span>${profile.email || ''}</span></p>`;
+                html += `<p><strong>Student ID:</strong> <span>${profile.student_id || ''}</span></p>`;
+                html += `<p><strong>Hostel:</strong> <span>${profile.hostel_name || ''}</span></p>`;
+                html += `<p><strong>Branch:</strong> <span>${profile.branch || ''}</span></p>`;
+                html += `<p><strong>Phone:</strong> <span>${profile.phone || 'Not set'}</span></p>`;
+                html += `</div>`;
+                document.getElementById('profileInfo').innerHTML = html;
+                
+                document.getElementById('profilePhone').value = profile.phone || '';
+            }
+
+            const stats = await fetchAPI('/api/stats');
+            if (stats) {
+                document.getElementById('complaintBadge').textContent = stats.total_complaints || 0;
+                document.getElementById('leaveBadge').textContent = stats.leave_requests || 0;
+            }
+        }
+
+        document.getElementById('profileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            const msg = document.getElementById('profileMessage');
+            msg.className = 'message-box';
+            msg.textContent = '⏳ Updating...';
+            msg.style.display = 'block';
+            
+            try {
+                const res = await fetch('/api/profile', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.success) {
+                    msg.className = 'message-box success';
+                    msg.textContent = '✅ ' + data.message;
+                    loadProfile();
+                    setTimeout(() => { msg.style.display = 'none'; }, 3000);
+                } else {
+                    msg.className = 'message-box error';
+                    msg.textContent = '❌ ' + (data.error || 'Failed');
+                }
+            } catch (error) {
+                msg.className = 'message-box error';
+                msg.textContent = '❌ Server error';
+            }
+        });
+
+        loadProfile();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Rooms</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno  Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/rooms"><i class="fas fa-bed"></i> Rooms</a></li>
+            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>🛏️ Rooms</h1>
+                <p>Available rooms in hostel</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="card-header"><h3>🛏️ Rooms</h3></div>
+            <div class="card-body" id="roomList">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) window.location.href = '/';
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDateTime').textContent = 
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' });
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        async function loadRooms() {
+            const rooms = await fetch('/api/rooms').then(r => r.json());
+            let html = '';
+            if (rooms && rooms.length > 0) {
+                rooms.forEach(r => {
+                    html += `<div class="room-card ${r.status}">
+                        <div class="room-number">🛏️ ${r.room_number}</div>
+                        <div class="room-hostel">${r.hostel_name}</div>
+                        <div class="room-status ${r.status}">${r.status}</div>
+                    </div>`;
+                });
+            } else {
+                html = '<div class="empty-state">🛏️ No rooms</div>';
+            }
+            document.getElementById('roomList').innerHTML = html;
+
+            const stats = await fetch('/api/stats').then(r => r.json());
+            document.getElementById('complaintBadge').textContent = stats.total_complaints || 0;
+            document.getElementById('leaveBadge').textContent = stats.leave_requests || 0;
+        }
+
+        loadRooms();
+    </script>
+
+</body>
+</html>

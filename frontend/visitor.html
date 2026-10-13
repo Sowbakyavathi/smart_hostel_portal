@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Visitor Log</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor" class="active"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/facilities"><i class="fas fa-building"></i> Facilities</a></li>
+            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="/admin"><i class="fas fa-crown"></i> Admin Panel</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>👤 Visitor Log</h1>
+                <p>Log your visitors</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="card-header"><h3>👤 Log Visitor</h3></div>
+            <div class="card-body">
+                <form id="visitorForm">
+                    <div class="form-group">
+                        <label>Visitor Name</label>
+                        <input type="text" id="visitorName" placeholder="Enter visitor name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Purpose</label>
+                        <input type="text" id="visitorPurpose" placeholder="Purpose of visit">
+                    </div>
+                    <button type="submit">📤 Log</button>
+                </form>
+                <div id="visitorMessage" class="message-box"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3>👤 Recent Visitors</h3></div>
+            <div class="card-body" id="visitorList">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) window.location.href = '/';
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDateTime').textContent = 
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' });
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers }
+                });
+                return await res.json();
+            } catch (e) {
+                console.error('Error:', e);
+                return null;
+            }
+        }
+
+        async function loadVisitors() {
+            const visitors = await fetchAPI('/api/visitor');
+            if (visitors) {
+                let html = '';
+                if (visitors.length > 0) {
+                    visitors.forEach(v => {
+                        html += `<div class="complaint-item">
+                            <div class="complaint-header">
+                                <span class="complaint-title">${v.visitor_name}</span>
+                                <span class="status-resolved">Logged</span>
+                            </div>
+                            <div class="complaint-desc">${v.purpose}</div>
+                            <div class="complaint-meta">📅 ${v.check_in}</div>
+                        </div>`;
+                    });
+                } else {
+                    html = '<div class="empty-state">👤 No visitors</div>';
+                }
+                document.getElementById('visitorList').innerHTML = html;
+
+                const stats = await fetchAPI('/api/stats');
+                if (stats) {
+                    document.getElementById('complaintBadge').textContent = stats.total_complaints || 0;
+                    document.getElementById('leaveBadge').textContent = stats.leave_requests || 0;
+                }
+            }
+        }
+
+        document.getElementById('visitorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                visitor_name: document.getElementById('visitorName').value,
+                purpose: document.getElementById('visitorPurpose').value
+            };
+            
+            const msg = document.getElementById('visitorMessage');
+            msg.className = 'message-box';
+            msg.textContent = '⏳ Logging...';
+            msg.style.display = 'block';
+            
+            const result = await fetchAPI('/api/visitor', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (result && result.success) {
+                msg.className = 'message-box success';
+                msg.textContent = '✅ ' + result.message;
+                this.reset();
+                loadVisitors();
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            } else {
+                msg.className = 'message-box error';
+                msg.textContent = '❌ ' + (result?.error || 'Failed');
+            }
+        });
+
+        loadVisitors();
+    </script>
+
+</body>
+</html>

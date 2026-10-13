@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Feedback</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback" class="active"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/facilities"><i class="fas fa-building"></i> Facilities</a></li>
+            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="/admin"><i class="fas fa-crown"></i> Admin Panel</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>⭐ Mess Feedback</h1>
+                <p>Rate your mess experience</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="card-header"><h3>⭐ Mess Feedback</h3></div>
+            <div class="card-body">
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <label>Meal Type</label>
+                        <select id="mealType">
+                            <option value="breakfast">🌅 Breakfast</option>
+                            <option value="lunch">☀️ Lunch</option>
+                            <option value="dinner">🌙 Dinner</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <select id="rating">
+                            <option value="5">⭐⭐⭐⭐⭐ - Excellent</option>
+                            <option value="4">⭐⭐⭐⭐ - Good</option>
+                            <option value="3">⭐⭐⭐ - Average</option>
+                            <option value="2">⭐⭐ - Poor</option>
+                            <option value="1">⭐ - Very Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Your Feedback</label>
+                        <textarea id="feedbackComment" placeholder="Share your feedback..."></textarea>
+                    </div>
+                    <button type="submit">📤 Submit</button>
+                </form>
+                <div id="feedbackMessage" class="message-box"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3>⭐ My Feedback</h3></div>
+            <div class="card-body" id="feedbackList">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) window.location.href = '/';
+
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDateTime').textContent = 
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' });
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers }
+                });
+                return await res.json();
+            } catch (e) {
+                console.error('Error:', e);
+                return null;
+            }
+        }
+
+        async function loadFeedback() {
+            const feedbacks = await fetchAPI('/api/mess/feedback');
+            if (feedbacks) {
+                let html = '';
+                if (feedbacks.length > 0) {
+                    feedbacks.forEach(f => {
+                        const stars = '⭐'.repeat(f.rating);
+                        html += `<div class="complaint-item">
+                            <div class="complaint-header">
+                                <span class="complaint-title">${f.meal_type}</span>
+                                <span class="status-resolved">${stars} ${f.rating}/5</span>
+                            </div>
+                            <div class="complaint-desc">${f.comment || 'No comment'}</div>
+                            <div class="complaint-meta">📅 ${f.created_at}</div>
+                        </div>`;
+                    });
+                } else {
+                    html = '<div class="empty-state">⭐ No feedback</div>';
+                }
+                document.getElementById('feedbackList').innerHTML = html;
+
+                const stats = await fetchAPI('/api/stats');
+                if (stats) {
+                    document.getElementById('complaintBadge').textContent = stats.total_complaints || 0;
+                    document.getElementById('leaveBadge').textContent = stats.leave_requests || 0;
+                }
+            }
+        }
+
+        document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                meal_type: document.getElementById('mealType').value,
+                rating: document.getElementById('rating').value,
+                comment: document.getElementById('feedbackComment').value
+            };
+            
+            const msg = document.getElementById('feedbackMessage');
+            msg.className = 'message-box';
+            msg.textContent = '⏳ Submitting...';
+            msg.style.display = 'block';
+            
+            const result = await fetchAPI('/api/mess/feedback', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (result && result.success) {
+                msg.className = 'message-box success';
+                msg.textContent = '✅ ' + result.message;
+                this.reset();
+                loadFeedback();
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            } else {
+                msg.className = 'message-box error';
+                msg.textContent = '❌ ' + (result?.error || 'Failed');
+            }
+        });
+
+        loadFeedback();
+    </script>
+
+</body>
+</html>

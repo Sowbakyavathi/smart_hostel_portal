@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Complaints</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel </span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="/menu"><i class="fas fa-utensils"></i> Food Menu</a></li>
+            <li><a href="/complaints" class="active"><i class="fas fa-exclamation-triangle"></i> Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="/leave"><i class="fas fa-calendar-alt"></i> Leave <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/visitor"><i class="fas fa-users"></i> Visitor</a></li>
+            <li><a href="/feedback"><i class="fas fa-star"></i> Feedback</a></li>
+            <li><a href="/facilities"><i class="fas fa-building"></i> Facilities</a></li>
+            <li><a href="/profile"><i class="fas fa-user"></i> Profile</a></li>
+            <li><a href="/admin"><i class="fas fa-crown"></i> Admin Panel</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>📋 Complaints</h1>
+                <p>Submit and track your complaints</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <!-- ===== NEW COMPLAINT FORM ===== -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 New Complaint</h3>
+            </div>
+            <div class="card-body">
+                <form id="complaintForm">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="complaintTitle" placeholder="Enter complaint title" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select id="complaintCategory">
+                                <option value="plumbing">🔧 Plumbing</option>
+                                <option value="electric">💡 Electric</option>
+                                <option value="cleaning">🧹 Cleaning</option>
+                                <option value="wifi">📶 WiFi</option>
+                                <option value="furniture">🪑 Furniture</option>
+                                <option value="other">📌 Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Priority</label>
+                            <select id="complaintPriority">
+                                <option value="low">🟢 Low</option>
+                                <option value="medium" selected>🟡 Medium</option>
+                                <option value="high">🔴 High</option>
+                                <option value="urgent">🔴 Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="complaintDesc" placeholder="Describe your issue in detail..." required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn-submit">📤 Submit Complaint</button>
+                </form>
+                <div id="complaintMessage" class="message-box"></div>
+            </div>
+        </div>
+
+        <!-- ===== MY COMPLAINTS LIST ===== -->
+        <div class="card">
+            <div class="card-header">
+                <h3>📋 My Complaints</h3>
+                <span class="badge-count" id="complaintCount">0</span>
+            </div>
+            <div class="card-body" id="complaintList">
+                <div class="loading-spinner">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (!sessionStorage.getItem('loggedIn')) {
+            window.location.href = '/';
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const el = document.getElementById('currentDateTime');
+            if (el) {
+                el.textContent = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+            }
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(() => {
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                })
+                .catch(() => {
+                    sessionStorage.clear();
+                    window.location.href = '/';
+                });
+        }
+
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+                if (res.status === 401) {
+                    logout();
+                    return null;
+                }
+                return await res.json();
+            } catch (e) {
+                console.error('Error:', e);
+                return null;
+            }
+        }
+
+        async function loadComplaints() {
+            const complaints = await fetchAPI('/api/complaints');
+            const listEl = document.getElementById('complaintList');
+            const countEl = document.getElementById('complaintCount');
+            
+            if (complaints) {
+                countEl.textContent = complaints.length;
+                
+                if (complaints.length === 0) {
+                    listEl.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📭</div>
+                            <p>No complaints yet. Submit your first complaint above!</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let html = '';
+                complaints.forEach(c => {
+                    const statusClass = c.status;
+                    const statusLabel = c.status.charAt(0).toUpperCase() + c.status.slice(1).replace('_', ' ');
+                    
+                    html += `
+                        <div class="complaint-item">
+                            <div class="complaint-header">
+                                <span class="complaint-title">${c.title}</span>
+                                <span class="status-${statusClass}">${statusLabel}</span>
+                            </div>
+                            <div class="complaint-desc">${c.description || 'No description'}</div>
+                            <div class="complaint-meta">
+                                <span>📂 ${c.category}</span>
+                                <span>⚡ ${c.priority}</span>
+                                <span>📅 ${c.created_at}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            }
+
+            // Update badges
+            const stats = await fetchAPI('/api/stats');
+            if (stats) {
+                const badge1 = document.getElementById('complaintBadge');
+                const badge2 = document.getElementById('leaveBadge');
+                if (badge1) badge1.textContent = stats.total_complaints || 0;
+                if (badge2) badge2.textContent = stats.leave_requests || 0;
+            }
+        }
+
+        // Submit Complaint
+        document.getElementById('complaintForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const data = {
+                title: document.getElementById('complaintTitle').value,
+                category: document.getElementById('complaintCategory').value,
+                priority: document.getElementById('complaintPriority').value,
+                description: document.getElementById('complaintDesc').value
+            };
+            
+            const msg = document.getElementById('complaintMessage');
+            msg.className = 'message-box';
+            msg.textContent = '⏳ Submitting...';
+            msg.style.display = 'block';
+            
+            const result = await fetchAPI('/api/complaints', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (result && result.success) {
+                msg.className = 'message-box success';
+                msg.textContent = '✅ ' + result.message;
+                this.reset();
+                loadComplaints();
+                setTimeout(() => {
+                    msg.style.display = 'none';
+                }, 3000);
+            } else {
+                msg.className = 'message-box error';
+                msg.textContent = '❌ ' + (result?.error || 'Failed to submit');
+            }
+        });
+
+        // Load data on page load
+        loadComplaints();
+    </script>
+
+</body>
+</html>

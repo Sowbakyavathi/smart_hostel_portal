@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Hostel - Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🏠 <span>SmartHostel</span></h2>
+            <small>Xeno Service Portal</small>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/admin" class="active"><i class="fas fa-th-large"></i> Dashboard</a></li>
+            <li><a href="#" onclick="showSection('complaints')"><i class="fas fa-exclamation-triangle"></i> All Complaints <span class="badge" id="complaintBadge">0</span></a></li>
+            <li><a href="#" onclick="showSection('leave')"><i class="fas fa-calendar-alt"></i> Leave Requests <span class="badge" id="leaveBadge">0</span></a></li>
+            <li><a href="/dashboard"><i class="fas fa-user"></i> Student View</a></li>
+            <li><a href="#" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <p>© 2024 SmartHostel</p>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="top-header">
+            <div>
+                <h1>👑 Admin Dashboard</h1>
+                <p>Manage complaints, leave requests and more</p>
+            </div>
+            <div class="header-right">
+                <span class="date-time" id="currentDateTime"></span>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </header>
+
+        <div id="section-dashboard" class="section active">
+            <div class="admin-stats">
+                <div class="admin-stat-card gold">
+                    <div class="stat-number" id="totalComplaints">0</div>
+                    <div class="stat-label">📋 Total Complaints</div>
+                </div>
+                <div class="admin-stat-card">
+                    <div class="stat-number" id="pendingComplaints">0</div>
+                    <div class="stat-label">⏳ Pending</div>
+                </div>
+                <div class="admin-stat-card gold">
+                    <div class="stat-number" id="totalLeave">0</div>
+                    <div class="stat-label">📅 Leave Requests</div>
+                </div>
+                <div class="admin-stat-card">
+                    <div class="stat-number" id="pendingLeave">0</div>
+                    <div class="stat-label">⏳ Leave Pending</div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <div class="quick-action" onclick="showSection('complaints')">
+                    <i class="fas fa-check-double"></i>
+                    <span>Manage Complaints</span>
+                </div>
+                <div class="quick-action" onclick="showSection('leave')">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Manage Leave</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="section-complaints" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📋 All Complaints</h3>
+                    <span class="badge-count" id="complaintCount">0</span>
+                </div>
+                <div class="card-body" id="complaintList">Loading...</div>
+            </div>
+        </div>
+
+        <div id="section-leave" class="section">
+            <div class="card">
+                <div class="card-header">
+                    <h3>📅 All Leave Requests</h3>
+                    <span class="badge-count" id="leaveCount">0</span>
+                </div>
+                <div class="card-body" id="leaveList">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('currentDateTime').textContent = 
+                now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            const section = document.getElementById('section-' + name);
+            if (section) section.classList.add('active');
+            return false;
+        }
+
+        function escapeHTML(value) {
+            return String(value ?? '').replace(/[&<>"']/g, character => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            })[character]);
+        }
+
+        async function fetchAPI(url, options = {}) {
+            try {
+                const res = await fetch(url, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', ...options.headers }
+                });
+                if (res.status === 401) {
+                    logout();
+                    return null;
+                }
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+                return data;
+            } catch (e) {
+                console.error('Error:', e);
+                return null;
+            }
+        }
+
+        async function loadAdminDashboard() {
+            const complaints = await fetchAPI('/api/admin/complaints');
+            if (complaints) {
+                document.getElementById('totalComplaints').textContent = complaints.length;
+                document.getElementById('complaintCount').textContent = complaints.length;
+                document.getElementById('complaintBadge').textContent = complaints.length;
+                
+                const pending = complaints.filter(c => c.status === 'pending').length;
+                document.getElementById('pendingComplaints').textContent = pending;
+                
+                let html = '';
+                if (complaints.length > 0) {
+                    complaints.forEach(c => {
+                        html += `<div class="complaint-item">
+                            <div class="complaint-header">
+                                <span class="complaint-title">#${c.id} ${escapeHTML(c.title)}</span>
+                                <span>
+                                    <select onchange="updateComplaint(${c.id}, this.value)" class="status-select">
+                                        <option value="pending" ${c.status === 'pending' ? 'selected' : ''}>🟡 Pending</option>
+                                        <option value="in_progress" ${c.status === 'in_progress' ? 'selected' : ''}>🟠 In Progress</option>
+                                        <option value="resolved" ${c.status === 'resolved' ? 'selected' : ''}>🟢 Resolved</option>
+                                        <option value="rejected" ${c.status === 'rejected' ? 'selected' : ''}>🔴 Rejected</option>
+                                    </select>
+                                </span>
+                            </div>
+                            <div class="complaint-desc">${escapeHTML(c.description || 'No description')}</div>
+                            <div class="complaint-meta">Student: ${escapeHTML(c.student_name || `#${c.student_id}`)} • 📂 ${escapeHTML(c.category)} • ⚡ ${escapeHTML(c.priority)} • 📅 ${escapeHTML(c.created_at)}</div>
+                        </div>`;
+                    });
+                } else {
+                    html = '<div class="empty-state">📭 No complaints</div>';
+                }
+                document.getElementById('complaintList').innerHTML = html;
+            }
+
+            const leaves = await fetchAPI('/api/admin/leave');
+            if (leaves) {
+                document.getElementById('totalLeave').textContent = leaves.length;
+                document.getElementById('leaveCount').textContent = leaves.length;
+                document.getElementById('leaveBadge').textContent = leaves.length;
+                
+                const pendingLeave = leaves.filter(l => l.status === 'pending').length;
+                document.getElementById('pendingLeave').textContent = pendingLeave;
+                
+                let html = '';
+                if (leaves.length > 0) {
+                    leaves.forEach(l => {
+                        html += `<div class="complaint-item">
+                            <div class="complaint-header">
+                                <span class="complaint-title">Leave Request #${l.id}</span>
+                                <span>
+                                    <select onchange="updateLeave(${l.id}, this.value)" class="status-select">
+                                        <option value="pending" ${l.status === 'pending' ? 'selected' : ''}>🟡 Pending</option>
+                                        <option value="approved" ${l.status === 'approved' ? 'selected' : ''}>🟢 Approved</option>
+                                        <option value="rejected" ${l.status === 'rejected' ? 'selected' : ''}>🔴 Rejected</option>
+                                    </select>
+                                </span>
+                            </div>
+                            <div class="complaint-desc">${escapeHTML(l.reason || 'No reason')}</div>
+                            <div class="complaint-meta">Student: ${escapeHTML(l.student_name || `#${l.student_id}`)} • 📅 ${escapeHTML(l.from_date)} to ${escapeHTML(l.to_date)}</div>
+                        </div>`;
+                    });
+                } else {
+                    html = '<div class="empty-state">📭 No leave requests</div>';
+                }
+                document.getElementById('leaveList').innerHTML = html;
+            }
+        }
+
+        async function updateComplaint(id, status) {
+            const result = await fetchAPI(`/api/admin/complaints/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status })
+            });
+            if (result && result.success) {
+                alert('✅ ' + result.message);
+                loadAdminDashboard();
+            } else {
+                alert('❌ Failed to update');
+            }
+        }
+
+        async function updateLeave(id, status) {
+            const result = await fetchAPI(`/api/admin/leave/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status })
+            });
+            if (result && result.success) {
+                alert('✅ ' + result.message);
+                loadAdminDashboard();
+            } else {
+                alert('❌ Failed to update');
+            }
+        }
+
+        loadAdminDashboard();
+    </script>
+
+</body>
+</html>
